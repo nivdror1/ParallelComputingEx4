@@ -25,27 +25,46 @@ void initMatrix(int** m, int size, int rank)
 		for (int j = 0; j < size; ++j) {
 			m[i][j] = rand()%100;
 		}
-	}char str[10];
-
-	sprintf(str, "%d", 12);
+	}
 }
 
-void saveToAFile(int** matrix,int rank, int size){
+/**
+ * save the matrix to a file
+ * @param matrix A 2D array of size 5*5
+ * @param rank The process rank
+ */
+void saveInput(int** matrix,int rank){
 	FILE * file;
+	//Create the name of the file
 	char str[3];
 	sprintf(str, "%d", rank);
 	char name[9]= "matrix_";
 	strcat(name,str);
 
-	file= fopen("name","w+");
+	//Open the file
+	file= fopen(name,"w+");
 	if (file == NULL){
-		printf("error opening file");//todo deal with it
+		printf("error opening file");
+		finalize();
+		exit(1);
 	}
-	int matrix_size = size*size;
-	if(fwrite(matrix, sizeof(int),(size_t)size*size,file)!= matrix_size){
-		printf("error writing to the file");//todo deal with it
+	//Write the matrix to the file and close it
+	int matrix_size = 25;
+	int errW = fwrite(matrix, sizeof(int),(size_t)matrix_size,file);
+
+	int errC = fclose(file);
+
+	if (errW != matrix_size || errC != 0){
+		finalize();
+		exit(1);
 	}
-	fclose(file); //todo incase it doesn't work
+}
+
+void transposeSubMatrix(int **matrix){
+
+	for(int i=0; i<5;i++){
+
+	}
 }
 
 int main(int argc, char **argv){
@@ -74,7 +93,7 @@ int main(int argc, char **argv){
 	//Initiate the matrix
 	initMatrix(matrix, size, rank);
 	//save the matrix to a file
-	saveToAFile(matrix,rank, size);
+	saveInput(matrix,rank);
 	return 0;
 }
 
