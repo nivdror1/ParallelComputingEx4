@@ -50,7 +50,7 @@ void saveInput(int** matrix,int rank){
 	}
 	//Write the matrix to the file and close it
 	int matrix_size = 25;
-	int errW = fwrite(matrix, sizeof(int),(size_t)matrix_size,file);
+	size_t errW = fwrite(matrix, sizeof(int),(size_t)matrix_size,file);
 
 	int errC = fclose(file);
 
