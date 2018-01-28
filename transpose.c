@@ -22,37 +22,37 @@
 int finalize(){
 	if(MPI_Finalize() != MPI_SUCCESS){
 		printf("Error in the finalize function\n");
+		MPI_Abort(MPI_COMM_WORLD,1); //todo check it up if there is need to use abort
 		return -1;
 	}
 	return 0;
 }
 
-//todo check if there is need to activate mpi_abort function
-//todo replace int to double
-/**
- * generates a random sizeXsize matrix of doubles
- * @param m The matrix
- * @param size The size of the block
- * @param rank The rank of the processor
- */
-void initMatrix(int** m, int size, int rank)
+/* generate a random floating point number from min to max */
+double randfrom(double min, double max)
+{
+	double range = (max - min);
+	double div = RAND_MAX / range;
+	return min + (rand() / div);
+}
+
+// generates a random sizeXsize matrix of doubles
+void initMatrix(double** m, int size, int rank)
 {
 	// initiate a generator for rand function
 	srand((unsigned int)(time(NULL) ^ rank));
 	for (int i = 0; i < size; ++i){
 		for (int j = 0; j < size; ++j) {
-			m[i][j] = rand()%100;
+			m[i][j] = randfrom(0.,100.);
 		}
 	}
 }
 
 
-void readMatrix(int** m, char* relPath, int size){
+void readMatrix(double** m, char* relPath, int size){
     FILE * file;
-    int i,j,val;
-	size_t errW1,errW2,errW3;
-	errW1 = errW2 = errW3 = 0;
-
+    int i,j;
+	double val;
     char fileName[8] = "/block_";
     strcat(relPath,fileName);
     for(int p=0; p<size; p++){
@@ -69,14 +69,15 @@ void readMatrix(int** m, char* relPath, int size){
             exit(1);
         }
         for (int b=0 ; b<(BS*BS); b++){
-            errW1 = fread(&i, sizeof(int),1,file);
-            errW2 = fread(&j, sizeof(int),1,file);
-            errW3 = fread(&val, sizeof(int),1,file);
+            fread(&i, sizeof(int),1,file);
+            fread(&j, sizeof(int),1,file);
+            fread(&val, sizeof(double),1,file);
             m[i][j] = val;
+
         }
         int errC = fclose(file);
 
-        if (errW1 != 1 || errW2 != 1 || errW3 != 1 || errC != 0){
+        if (errC != 0){
             finalize();
             exit(1);
         }
@@ -84,14 +85,7 @@ void readMatrix(int** m, char* relPath, int size){
 }
 
 
-void printMatrix(int** m, int size){
-	for (int i = 0; i < size; ++i){
-		for (int j = 0; j < size; ++j) {
-			printf("%d\t",m[i][j]);
-		}
-		printf("\n");
-	}
-}
+
 
 
 /**
@@ -99,7 +93,7 @@ void printMatrix(int** m, int size){
  * @param matrix A 2D array of size 5*5
  * @param rank The process rank
  */
-void saveInput(int** matrix, int rank, int size){
+void saveInput(double** matrix, int rank, int size){
 	FILE * file;
 	//Create the name of the file
 	char rank_str[3];
@@ -115,32 +109,31 @@ void saveInput(int** matrix, int rank, int size){
 		exit(1);
 	}
 	//Write the matrix to the file and close it
-	size_t errW1,errW2,errW3;
-	errW1 = errW2 = errW3 = 0;
-    int p = sqrt(size);
+
+    int p = (int)sqrt(size);
     int rank_x = rank%p;
-    int rank_y = floor(rank/p);
+    int rank_y = (int)floor(rank/p);
     int start_x = rank_x * BS;
     int start_y = rank_y * BS;
     for(int i=0; i<BS; i++){
         int globe_i = start_y + i;
         for(int j=0; j<BS;j++){
             int globe_j = start_x + j;
-            errW1 = fwrite(&globe_i, sizeof(int),1,file);
-            errW2 = fwrite(&globe_j, sizeof(int),1,file);
-            errW3 = fwrite(&matrix[i][j], sizeof(int),1,file);
+            fwrite(&globe_i, sizeof(int),1,file);
+            fwrite(&globe_j, sizeof(int),1,file);
+            fwrite(&matrix[i][j], sizeof(double),1,file);
         }
     }
 
 	int errC = fclose(file);
 
-	if (errW1 != 1 || errW2 != 1 || errW3 != 1 || errC != 0){
+	if (errC != 0){
 		finalize();
 		exit(1);
 	}
 }
 
-void transposeSubMatrix(int **A, int size, int rank){
+void transposeSubMatrix(double **A, int size, int rank){
     FILE * file;
     //Create the name of the file
     char rank_str[3];
@@ -155,10 +148,8 @@ void transposeSubMatrix(int **A, int size, int rank){
         finalize();
         exit(1);
     }
-	int globe_i, globe_j;
-	size_t errW1,errW2,errW3;
-	errW1 = errW2 = errW3 = 0;
 
+	int globe_i, globe_j;
 	int p = (int)sqrt(size);
 	int rank_x = rank%p;
 	int rank_y = (int)floor(rank/p);
@@ -168,23 +159,23 @@ void transposeSubMatrix(int **A, int size, int rank){
 		for(int j=0; j<BS;j++){
 			globe_i = start_y + i;
 			globe_j = start_x + j;
-            errW1 = fwrite(&globe_j, sizeof(int),1,file);
-            errW2 = fwrite(&globe_i, sizeof(int),1,file);
-            errW3 = fwrite(&A[i][j], sizeof(int),1,file);
+            fwrite(&globe_j, sizeof(int),1,file);
+            fwrite(&globe_i, sizeof(int),1,file);
+            fwrite(&A[i][j], sizeof(double),1,file);
 		}
 	}
     int errC = fclose(file);
 
-	if (errW1 != 1 || errW2 != 1 || errW3 != 1 || errC != 0){
-		finalize();
-		exit(1);
-	}
+    if (errC != 0){
+        finalize();
+        exit(1);
+    }
 }
 
-int validateTranspose(int **A, int **B, int n){
+int validateTranspose(double **A, double **B, int n){
 	for (int i=0; i<n ; i++){
 		for (int j=0; j<n ; j++){
-			if (A[i][j] != B[j][i]){
+			if ((A[i][j] - B[j][i] > 0.000000001) || (A[i][j] - B[j][i] < -0.000000001) ){
 				printf("transpose failed! :( ");
 				return -1;
 			}
@@ -194,10 +185,19 @@ int validateTranspose(int **A, int **B, int n){
 	return 0;
 }
 
+void printMatrix(double** m, int size){
+	for (int i = 0; i < size; ++i){
+		for (int j = 0; j < size; ++j) {
+			printf("%f\t",m[i][j]);
+		}
+		printf("\n");
+	}
+}
+
 int main(int argc, char **argv){
 
-	int rank, size, n;
-	int **A;
+	int rank, size;
+	double **M;
 	if(MPI_Init(&argc, &argv ) != MPI_SUCCESS){
 		printf("Error in init function\n");
 		return -1;
@@ -225,19 +225,19 @@ int main(int argc, char **argv){
     }
 
 	//Allocating the matrix
-	A = (int **)malloc(BS * sizeof(int));
+	M = (double **)malloc(BS * sizeof(double *));
 	for (int i=0; i<BS; i++)
-		A[i] = (int *)malloc(BS * sizeof(int));
-	initMatrix(A, BS, rank);
+		M[i] = (double *)malloc(BS * sizeof(double));
+	initMatrix(M, BS, rank);
 //	printMatrix(A, n);
-    saveInput(A, rank, size);
+    saveInput(M, rank, size);
 
-	transposeSubMatrix(A, size, rank);
+	transposeSubMatrix(M, size, rank);
 
     for (int i=0; i<BS; i++){
-        free(A[i]);
+        free(M[i]);
     }
-    free(A);
+    free(M);
 
 	if(MPI_Barrier(MPI_COMM_WORLD) !=  MPI_SUCCESS){
 		printf("Error in the barrier function\n");
@@ -246,22 +246,21 @@ int main(int argc, char **argv){
 
 
 	if (rank == 0){
-        int n = (int) BS*sqrt(size);
-        int **A = (int **)malloc(n * sizeof(int *));
+        int n = (int)(BS*sqrt(size));
+		double **A = (double **)malloc(n * sizeof(double *));
         for (int i=0; i<n; i++)
-            A[i] = (int *)malloc(n * sizeof(int));
-		int **B = (int **)malloc(n * sizeof(int *));
+            A[i] = (double *)malloc(n * sizeof(double));
+		double **B = (double **)malloc(n * sizeof(double *));
 		for (int i=0; i<n; i++)
-			B[i] = (int *)malloc(n * sizeof(int));
+			B[i] = (double *)malloc(n * sizeof(double));
+
 		char inputPath[50] = "transpose/input";
         readMatrix(A, inputPath, size);
-        printf("\nInput Matrix:\n");
-        printMatrix(A, n);
-		printf("\n");
+		//printMatrix(A, n);
+		//printf("\n");
         char outputPath[50] = "transpose/output";
         readMatrix(B, outputPath, size);
-        printf("\nOutput Matrix:\n");
-        printMatrix(B, n);
+		//printMatrix(B, n);
 		validateTranspose(A, B, n);
 
         for (int i=0; i<BS; i++) {
@@ -273,6 +272,7 @@ int main(int argc, char **argv){
 	}
 
 	finalize();
+
 	return 0;
 }
 

@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include "mpi.h"
 
+// mpicc hello_mpi.c –o hello.exe
+// mpirun -n 5 ./hello.exe
+
+
 /**
  * Perform the finalize function
  * @return 0 if done correctly else return -1
